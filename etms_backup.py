@@ -20,6 +20,15 @@ BACKUP_TASKS = [
         "backup_to": "/home/pop/Documents/lxd-backups",
         "validity_days": 2,
         "failure_mailto": "igentle.appletec@gmail.com",
+    },
+    {
+        "sites": ["site2.local", "libyanstore.erpnext.ly"],
+        "type": "lxd",
+        "container": "erp",
+        "bench_path": "/home/ubuntu/frappe-bench",
+        "backup_to": "/home/pop/Documents/lxd-backups",
+        "validity_days": 2,
+        "failure_mailto": "igentle.appletec@gmail.com",
     }
 ]
 
@@ -53,7 +62,7 @@ def main():
                         "cd frappe-bench && bench --site {site} backup --compress --with-files --backup-path /tmp/etms-backup"
                     """.replace("\n", ""),
                     shell=True)
-
+                    # raise Exception("fobar")
                     # pull backup from lxd container
                     subprocess.check_call(
                         f"lxc file pull -r {task['container']}/tmp/etms-backup {tmp_folder.name}",
@@ -73,25 +82,28 @@ def main():
                     shutil.move(src_path, backup_to_path)
             except Exception as e:
                 print(e)
-                etms_send_mail('i.abdo@ebkar.ly', 'igentle.appletec@gmail.com', 'ETMS Backup Failure', 'etms notification')
+                notify_failure(task['failure_mailto'], site)
 
 
-def etms_send_mail(sender, receiver, subject, message):
+def notify_failure(failure_mailto, site):
     smtp_user = 'i.abdo@ebkar.ly'
     smtp_pass = 'ia@2008@IA'
 
     msg = EmailMessage()
-    msg.set_content(message)
+    msg.set_content(f"""
+        ETMS Backup System
+        the backup proceess of your site: {site} faild
+    """)
 
-    msg['Subject'] = subject
-    msg['From'] = sender
-    msg['To'] = receiver
+    msg['Subject'] = f"ETMS Backup, Site: {site} backup faild!"
+    msg['From'] = smtp_user
+    msg['To'] = failure_mailto
 
     try:
         smtp_server = smtplib.SMTP_SSL('mail.ebkar.ly', 465)
         # smtp_server.ehlo()
         smtp_server.login(smtp_user, smtp_pass)
-        smtp_server.sendmail(sender, receiver, msg.as_string())
+        smtp_server.sendmail(smtp_user, failure_mailto, msg.as_string())
         smtp_server.close()
         print ("Email sent successfully!")
     except Exception as ex:
