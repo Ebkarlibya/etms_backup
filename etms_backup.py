@@ -8,6 +8,7 @@ from dateutil.parser import parse
 import smtplib
 from email.message import EmailMessage
 
+
 # Add Backup tasks below
 BACKUP_TASKS = [
     {
@@ -16,19 +17,13 @@ BACKUP_TASKS = [
         "container": "erp",
         "bench_path": "/home/ubuntu/frappe-bench",
         "backup_to": "/home/pop/Documents/lxd-backups",
-        "validity_days": 2,
-        "failure_mailto": "igentle.appletec@gmail.com",
-    },
-    {
-        "sites": ["site2.local", "libyanstore.erpnext.ly"],
-        "type": "lxd",
-        "container": "erp",
-        "bench_path": "/home/ubuntu/frappe-bench",
-        "backup_to": "/home/pop/Documents/lxd-backups",
-        "validity_days": 2,
+        "validity_days": 30,
         "failure_mailto": "igentle.appletec@gmail.com",
     }
 ]
+
+
+
 
 def main():
     #handle tasks
