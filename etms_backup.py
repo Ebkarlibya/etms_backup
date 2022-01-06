@@ -13,33 +13,32 @@ from email.message import EmailMessage
 # Add Backup tasks below
 BACKUP_TASKS = [
     {
-        "sites": ["site1.local"],
+        "sites": ["site1.local", "pos2.erpbox.dev"],
         "type": "lxd",
         "container": "erp",
-        # "src": "/home/ubuntu/frappe-bench/sites/site1.local/private/backups",
-        "dst": "/home/pop/frappe-bench/bk_tmp",
-        "old_backup_validity_days": 2,
+        "bench_path": "/home/ubuntu/frappe-bench",
+        "backup_to": "/home/pop/Documents/lxd-backups",
+        "validity_days": 2,
         "failure_mailto": "igentle.appletec@gmail.com",
     }
 ]
 
 def main():
-    # etms_send_mail('i.abdo@ebkar.ly', 'igentle.appletec@gmail.com', 'ETMS Backup', 'etms notification')
     #handle tasks
     for task in BACKUP_TASKS:
         # Check old backups
-        # old_backup_validity_days = task['old_backup_validity_days']
+        validity_days = task['validity_days']
 
-        # if task['old_backup_validity_days'] > 0:
-        #     backedup_files = os.listdir(task['dst'])
+        if task['validity_days'] > 0:
+            backedup_files = os.listdir(task['backup_to'])
 
-        #     for backup_name in backedup_files:
-        #         backup_date = parse(backup_name, fuzzy=True)
+            for backup_name in backedup_files:
+                backup_date = parse(backup_name.split("date:")[1], fuzzy=True)
 
-        #         if (datetime.datetime.now() - backup_date).days > old_backup_validity_days:
-        #             backup_path = os.path.join(task['dst'], backup_name)
-        #             shutil.rmtree(backup_path)
-        #             print(f"Backup: {backup_name} exceeded the validity days ({old_backup_validity_days} Day) and got Deleted.")
+                if (datetime.datetime.now() - backup_date).days > validity_days:
+                    backup_path = os.path.join(task['backup_to'], backup_name)
+                    shutil.rmtree(backup_path)
+                    print(f"ETMS Backup: Deleting invalid backup {backup_name}")
     
         if task['type'] == "lxd":
             # tmp working dir
@@ -51,7 +50,7 @@ def main():
                 for site in sites:
                     subprocess.call(f"""
                         lxc exec {task['container']} -- sudo --login --user ubuntu bash -ilc 
-                        "cd frappe-bench && bench --site {site} backup --with-files --backup-path /tmp/etms-backup"
+                        "cd frappe-bench && bench --site {site} backup --compress --with-files --backup-path /tmp/etms-backup"
                     """.replace("\n", ""),
                     shell=True)
 
@@ -62,18 +61,19 @@ def main():
 
                     # delete container /tmp/etms-backup folder
                     subprocess.check_call(f"""
-                        lxc exec erp -- sudo --login --user ubuntu bash -ilc "rm -rf /tmp/etms-backup"
+                        lxc exec {task['container']} -- sudo --login --user ubuntu bash -ilc "rm -rf /tmp/etms-backup"
                     """,
                     shell=True)
                     # format backup name
-                    new_backup_name = f"etms-backup:{site}-{datetime.datetime.now().strftime('%Y-%m-%d:%H:%M')}"
+                    new_backup_name = f"{site}-date:{datetime.datetime.now().strftime('%Y-%m-%d:%H:%M')}"
 
                     src_path = os.path.join(tmp_folder.name, "etms-backup")
-                    dst_path = os.path.join(task['dst'], new_backup_name)
+                    backup_to_path = os.path.join(task['backup_to'], new_backup_name)
 
-                    shutil.move(src_path, dst_path)
+                    shutil.move(src_path, backup_to_path)
             except Exception as e:
                 print(e)
+                etms_send_mail('i.abdo@ebkar.ly', 'igentle.appletec@gmail.com', 'ETMS Backup Failure', 'etms notification')
 
 
 def etms_send_mail(sender, receiver, subject, message):
