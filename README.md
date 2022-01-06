@@ -3,9 +3,10 @@
 Backup System For ERPNext sites
 
 Features:
-- delete old backups which exceeds X days (can be disabled)
-- backup one or more lxd sites one by one
-- store backups to a selected folder (destination)
+- Multi task backup multi source and destinations
+- Delete old backups which exceeds X days 
+- Backup one or more lxd sites one by one
+- Store backups to a selected folder (destination)
 
 #### License
 
