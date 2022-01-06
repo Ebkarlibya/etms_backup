@@ -8,8 +8,6 @@ from dateutil.parser import parse
 import smtplib
 from email.message import EmailMessage
 
-
-
 # Add Backup tasks below
 BACKUP_TASKS = [
     {
@@ -42,7 +40,10 @@ def main():
             backedup_files = os.listdir(task['backup_to'])
 
             for backup_name in backedup_files:
-                backup_date = parse(backup_name.split("date:")[1], fuzzy=True)
+                d = backup_name.split("date:")
+                if len(d) < 2:
+                    continue
+                backup_date = parse(d[1], fuzzy=True)
 
                 if (datetime.datetime.now() - backup_date).days > validity_days:
                     backup_path = os.path.join(task['backup_to'], backup_name)
@@ -58,19 +59,19 @@ def main():
                 sites = task['sites']
                 for site in sites:
                     subprocess.call(f"""
-                        lxc exec {task['container']} -- sudo --login --user ubuntu bash -ilc 
+                        /snap/bin/lxc exec {task['container']} -- sudo --login --user ubuntu bash -ilc 
                         "cd frappe-bench && bench --site {site} backup --compress --with-files --backup-path /tmp/etms-backup"
                     """.replace("\n", ""),
                     shell=True)
                     # raise Exception("fobar")
                     # pull backup from lxd container
                     subprocess.check_call(
-                        f"lxc file pull -r {task['container']}/tmp/etms-backup {tmp_folder.name}",
+                        f"/snap/bin/lxc file pull -r {task['container']}/tmp/etms-backup {tmp_folder.name}",
                         shell=True)
 
                     # delete container /tmp/etms-backup folder
                     subprocess.check_call(f"""
-                        lxc exec {task['container']} -- sudo --login --user ubuntu bash -ilc "rm -rf /tmp/etms-backup"
+                        /snap/bin/lxc exec {task['container']} -- sudo --login --user ubuntu bash -ilc "rm -rf /tmp/etms-backup"
                     """,
                     shell=True)
                     # format backup name
