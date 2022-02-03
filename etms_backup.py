@@ -7,15 +7,16 @@ import shutil
 from dateutil.parser import parse
 import smtplib
 from email.message import EmailMessage
+from pdb import set_trace as bp
 
 
 # Add Backup tasks below
 BACKUP_TASKS = [
     {
-        "sites": ["site1.local", "pos2.erpbox.dev"],
-        "type": "lxd",
+        "sites": ["erp.local"],
+        "type": "local",
         "container": "erp",
-        "bench_path": "/home/ubuntu/frappe-bench",
+        "bench_path": "/home/pop/erpdev",
         "backup_to": "/home/pop/Documents/lxd-backups",
         "validity_days": 30,
         "failure_mailto": "igentle.appletec@gmail.com",
@@ -23,11 +24,11 @@ BACKUP_TASKS = [
 ]
 
 
-
-
 def main():
     #handle tasks
     for task in BACKUP_TASKS:
+        if not os.path.exists(task['backup_to']):
+            os.mkdir(task['backup_to'])
         # Check old backups
         validity_days = task['validity_days']
 
@@ -45,6 +46,31 @@ def main():
                     shutil.rmtree(backup_path)
                     print(f"ETMS Backup: Deleting invalid backup {backup_name}")
     
+        if task['type'] == "local":
+            # tmp working dir
+            tmp_folder = tempfile.TemporaryDirectory()
+            # bp()
+
+            try:
+                # backup each task site
+                sites = task['sites']
+                for site in sites:
+                    subprocess.call(f""" 
+                        cd {task['bench_path']} && bench --site {site} backup --compress --with-files --backup-path {tmp_folder.name}
+                    """.replace("\n", ""),
+                    shell=True)
+
+                    # format backup name
+                    new_backup_name = f"{site}-date:{datetime.datetime.now().strftime('%Y-%m-%d:%H:%M')}"
+
+                    src_path = os.path.join(tmp_folder.name, "etms-backup")
+                    backup_to_path = os.path.join(task['backup_to'], new_backup_name)
+
+                    shutil.move(tmp_folder.name, backup_to_path)
+            except Exception as e:
+                print(e)
+                notify_failure(task['failure_mailto'], site)
+
         if task['type'] == "lxd":
             # tmp working dir
             tmp_folder = tempfile.TemporaryDirectory()
@@ -80,10 +106,9 @@ def main():
                 print(e)
                 notify_failure(task['failure_mailto'], site)
 
-
 def notify_failure(failure_mailto, site):
-    smtp_user = 'i.abdo@ebkar.ly'
-    smtp_pass = 'ia@2008@IA'
+    smtp_user = 'admin@ebkar.ly'
+    smtp_pass = ''
 
     msg = EmailMessage()
     msg.set_content(f"""
